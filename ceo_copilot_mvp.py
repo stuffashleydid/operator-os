@@ -5,10 +5,13 @@ from typing import Any, Dict, List, Tuple
 import streamlit as st
 from openai import OpenAI
 
+
 # ---------------------------------
 # Config
 # ---------------------------------
 MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1")
+
+
 def get_api_key() -> str:
     key = os.getenv("OPENAI_API_KEY")
     if key:
@@ -23,6 +26,7 @@ def get_api_key() -> str:
         pass
 
     raise ValueError("OPENAI_API_KEY not found in environment or .env file")
+
 
 client = OpenAI(api_key=get_api_key())
 
@@ -53,7 +57,7 @@ SCHEMA = {
         "executive_summary": {"type": "string"},
         "sub_questions": {
             "type": "array",
-            "items": {"type": "string"}
+            "items": {"type": "string"},
         },
         "key_findings": {
             "type": "array",
@@ -62,11 +66,11 @@ SCHEMA = {
                 "properties": {
                     "finding": {"type": "string"},
                     "why_it_matters": {"type": "string"},
-                    "confidence": {"type": "string"}
+                    "confidence": {"type": "string"},
                 },
                 "required": ["finding", "why_it_matters", "confidence"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         "market_landscape": {
             "type": "array",
@@ -74,11 +78,11 @@ SCHEMA = {
                 "type": "object",
                 "properties": {
                     "theme": {"type": "string"},
-                    "details": {"type": "string"}
+                    "details": {"type": "string"},
                 },
                 "required": ["theme", "details"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         "risks": {
             "type": "array",
@@ -87,11 +91,11 @@ SCHEMA = {
                 "properties": {
                     "risk": {"type": "string"},
                     "impact": {"type": "string"},
-                    "mitigation": {"type": "string"}
+                    "mitigation": {"type": "string"},
                 },
                 "required": ["risk", "impact", "mitigation"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         "recommendation": {
             "type": "object",
@@ -100,11 +104,11 @@ SCHEMA = {
                 "rationale": {"type": "string"},
                 "tradeoffs": {
                     "type": "array",
-                    "items": {"type": "string"}
-                }
+                    "items": {"type": "string"},
+                },
             },
             "required": ["verdict", "rationale", "tradeoffs"],
-            "additionalProperties": False
+            "additionalProperties": False,
         },
         "next_steps": {
             "type": "array",
@@ -113,16 +117,16 @@ SCHEMA = {
                 "properties": {
                     "action": {"type": "string"},
                     "owner": {"type": "string"},
-                    "timing": {"type": "string"}
+                    "timing": {"type": "string"},
                 },
                 "required": ["action", "owner", "timing"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         "open_questions": {
             "type": "array",
-            "items": {"type": "string"}
-        }
+            "items": {"type": "string"},
+        },
     },
     "required": [
         "research_question",
@@ -133,9 +137,9 @@ SCHEMA = {
         "risks",
         "recommendation",
         "next_steps",
-        "open_questions"
+        "open_questions",
     ],
-    "additionalProperties": False
+    "additionalProperties": False,
 }
 
 
@@ -158,6 +162,29 @@ Instructions:
 """
 
 
+def extract_sources(response: Any) -> List[Dict[str, str]]:
+    gathered: List[Dict[str, str]] = []
+    seen = set()
+
+    output_items = getattr(response, "output", []) or []
+    for item in output_items:
+        item_type = getattr(item, "type", None)
+        if item_type == "web_search_call":
+            action = getattr(item, "action", None)
+            if not action:
+                continue
+
+            sources = getattr(action, "sources", None) or []
+            for src in sources:
+                title = getattr(src, "title", None) or "Untitled source"
+                url = getattr(src, "url", None) or ""
+                if url and url not in seen:
+                    seen.add(url)
+                    gathered.append({"title": title, "url": url})
+
+    return gathered
+
+
 def run_research(question: str, context: str, mode: str) -> Tuple[Dict[str, Any], List[Dict[str, str]]]:
     user_prompt = build_user_prompt(question, context, mode)
 
@@ -165,12 +192,8 @@ def run_research(question: str, context: str, mode: str) -> Tuple[Dict[str, Any]
         model=MODEL,
         instructions=SYSTEM_PROMPT,
         input=user_prompt,
-        tools=[
-            {"type": "web_search_preview"}
-        ],
+        tools=[{"type": "web_search_preview"}],
         tool_choice="auto",
-        max_tool_calls=6,
-        include=["web_search_call.action.sources"],
         text={
             "format": {
                 "type": "json_schema",
@@ -186,29 +209,7 @@ def run_research(question: str, context: str, mode: str) -> Tuple[Dict[str, Any]
     return result, sources
 
 
-def extract_sources(response: Any) -> List[Dict[str, str]]:
-    gathered: List[Dict[str, str]] = []
-    seen = set()
-
-    output_items = getattr(response, "output", []) or []
-    for item in output_items:
-        item_type = getattr(item, "type", None)
-        if item_type == "web_search_call":
-            action = getattr(item, "action", None)
-            if not action:
-                continue
-            sources = getattr(action, "sources", None) or []
-            for src in sources:
-                title = getattr(src, "title", None) or "Untitled source"
-                url = getattr(src, "url", None) or ""
-                if url and url not in seen:
-                    seen.add(url)
-                    gathered.append({"title": title, "url": url})
-
-    return gathered
-
-
-def render_findings(findings: List[Dict[str, str]]):
+def render_findings(findings: List[Dict[str, str]]) -> None:
     for i, item in enumerate(findings, 1):
         with st.container(border=True):
             st.markdown(f"### {i}. {item.get('finding', 'Finding')}")
@@ -216,14 +217,14 @@ def render_findings(findings: List[Dict[str, str]]):
             st.write(f"**Confidence:** {item.get('confidence', '-')}")
 
 
-def render_landscape(items: List[Dict[str, str]]):
+def render_landscape(items: List[Dict[str, str]]) -> None:
     for i, item in enumerate(items, 1):
         with st.container(border=True):
             st.markdown(f"### {i}. {item.get('theme', 'Theme')}")
-            st.write(item.get('details', '-'))
+            st.write(item.get("details", "-"))
 
 
-def render_risks(items: List[Dict[str, str]]):
+def render_risks(items: List[Dict[str, str]]) -> None:
     for i, item in enumerate(items, 1):
         with st.container(border=True):
             st.markdown(f"### {i}. {item.get('risk', 'Risk')}")
@@ -231,7 +232,7 @@ def render_risks(items: List[Dict[str, str]]):
             st.write(f"**Mitigation:** {item.get('mitigation', '-')}")
 
 
-def render_next_steps(items: List[Dict[str, str]]):
+def render_next_steps(items: List[Dict[str, str]]) -> None:
     for i, item in enumerate(items, 1):
         with st.container(border=True):
             st.markdown(f"### {i}. {item.get('action', 'Action')}")
@@ -239,7 +240,7 @@ def render_next_steps(items: List[Dict[str, str]]):
             st.write(f"**Timing:** {item.get('timing', '-')}")
 
 
-def load_demo(mode: str):
+def load_demo(mode: str) -> Tuple[str, str]:
     demos = {
         "Market entry": (
             "Should we enter a new metropolitan market with a premium service offering?",
@@ -255,16 +256,15 @@ def load_demo(mode: str):
         ),
         "Custom": ("", ""),
     }
+    return demos.get(mode, ("", ""))
 
-    if mode in demos:
-        return demos[mode]
 
-    return ("", "")
-
-def main():
+def main() -> None:
     st.set_page_config(page_title="Operator OS", layout="wide")
     st.title("Operator OS — Research + Decision Engine")
-    st.caption("An AI agent that researches a business question, synthesizes evidence, and produces an operator-grade recommendation.")
+    st.caption(
+        "An AI agent that researches a business question and produces a clear, decision-ready recommendation."
+    )
 
     with st.sidebar:
         st.header("Demo modes")
@@ -278,62 +278,46 @@ def main():
             **How to demo this**
             1. Load a sample or enter your own question.
             2. Add context.
-            3. Run the agent.
-            4. Show the recommendation, risks, and cited sources.
+            3. Generate a recommendation.
+            4. Show the recommendation, risks, and sources.
             """
         )
 
-demo_data = load_demo(mode)
+    demo_question, demo_context = load_demo(mode)
 
-if not isinstance(demo_data, tuple) or len(demo_data) != 2:
-    st.error(f"load_demo returned invalid value: {demo_data}")
-    st.stop()
+    if "question" not in st.session_state:
+        st.session_state["question"] = demo_question
+    if "context" not in st.session_state:
+        st.session_state["context"] = demo_context
 
-demo_question, demo_context = demo_data
+    col_a, col_b = st.columns([2, 1])
 
-col_a, col_b = st.columns([2, 1])
-with col_a:
-    question = st.text_area(
-            "Key considerations",
-            value=demo_question,
-            placeholder="Example: Market attractiveness, target customer, competitive intensity, business model viability, likely risks, and what would need to be true for this to work.",
+    with col_a:
+        question = st.text_area(
+            "Business question",
+            value=st.session_state["question"],
+            placeholder="Example: Should we enter a new market? Is this an attractive acquisition? What is the best go-to-market strategy?",
             height=120,
         )
-with col_b:
-    if st.button("Load demo scenario"):
+
+    with col_b:
+        context = st.text_area(
+            "Key considerations",
+            value=st.session_state["context"],
+            placeholder="Example: Market attractiveness, customer segments, competition, risks, and key success factors.",
+            height=120,
+        )
+
+        if st.button("Load demo scenario"):
             st.session_state["question"] = demo_question
             st.session_state["context"] = demo_context
             st.rerun()
 
-    if "question" in st.session_state:
-        default_question = st.session_state["question"]
-    else:
-        default_question = demo_question
-
-    if "context" in st.session_state:
-        default_context = st.session_state["context"]
-    else:
-        default_context = demo_context
-
-    question = st.text_area(
-        "Business question",
-        value=default_question,
-        placeholder="Enter the business question you want the agent to research.",
-        height=100,
-    )
-
-    context = st.text_area(
-        "Additional context",
-        value=default_context,
-        placeholder="Add goals, constraints, timeline, customer profile, or any other useful context.",
-        height=180,
-    )
-
-    run = st.button("Run research agent", type="primary")
+    run = st.button("Generate recommendation", type="primary")
 
     if run:
         if not question.strip():
-            st.error("Please enter a research question.")
+            st.error("Please enter a business question.")
             st.stop()
 
         with st.spinner("Researching and synthesizing..."):
@@ -341,7 +325,6 @@ with col_b:
                 result, sources = run_research(question, context, mode)
             except Exception as e:
                 st.exception(e)
-                st.info("If the error mentions the web search tool type, check the current OpenAI docs and SDK version. The Responses API supports built-in web search, but tool naming can change across versions.")
                 st.stop()
 
         st.subheader("Executive Summary")
