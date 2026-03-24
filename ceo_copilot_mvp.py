@@ -292,7 +292,7 @@ if not isinstance(demo_data, tuple) or len(demo_data) != 2:
 demo_question, demo_context = demo_data
 
 col_a, col_b = st.columns([2, 1])
-with col_a:
+   with col_a:
         question = st.text_area(
             "Key considerations",
             value=demo_question,
