@@ -283,16 +283,16 @@ def main():
             """
         )
 
-    demo_data = load_demo(mode)
+demo_data = load_demo(mode)
 
 if not isinstance(demo_data, tuple) or len(demo_data) != 2:
     st.error(f"load_demo returned invalid value: {demo_data}")
     st.stop()
 
-    demo_question, demo_context = demo_data
+demo_question, demo_context = demo_data
 
-    col_a, col_b = st.columns([2, 1])
-    with col_a:
+col_a, col_b = st.columns([2, 1])
+with col_a:
         question = st.text_area(
             "Key considerations",
             value=demo_question,
