@@ -227,16 +227,16 @@ def render_next_steps(items: List[Dict[str, str]]):
 def load_demo(mode: str) -> Tuple[str, str]:
     demos = {
         "Market entry": (
-            "Should we expand into Chicago with a premium apartment cleaning service focused on renters paying $2,700-$3,800 per month?",
-            "Target customer is busy professionals ages 25-40 living in 1-2 bedroom apartments. We want to understand pricing, demand, competition, and whether the unit economics could support a premium position."
+            "Should we enter a new metropolitan market with a premium service offering?"
+            "Assess target customer demand, price tolerance, competitive intensity, go-to-market feasibility, and whether the economics support a premium position."
         ),
         "Investment memo": (
-            "Is a boutique AI consulting studio an attractive investment or acquisition target over the next 24 months?",
-            "Focus on market demand, competition, service model defensibility, margin profile, and what would make a firm stand out beyond generic AI implementation work."
+            "Is a specialized professional services firm an attractive investment or acquisition target over the next 24 months?"
+            "Focus on market demand, competition, service-model defensibility, margin profile, and what would make a firm stand out in a crowded market."
         ),
         "GTM research": (
-            "Should a premium popcorn brand launch first through boutique gyms in Chicago?",
-            "Assess customer fit, competitor brands, price positioning, partnership feasibility, and likely GTM risks."
+            "Should a new premium consumer brand launch first through niche partnership channels?"
+            "Assess customer fit, channel attractiveness, pricing power, partnership feasibility, and likely go-to-market risks."
         ),
         "Custom": ("", ""),
     }
@@ -270,9 +270,9 @@ def main():
     col_a, col_b = st.columns([2, 1])
     with col_a:
         question = st.text_area(
-            "Research question",
+            "Key considerations",
             value=demo_question,
-            placeholder="Example: Should we enter X market? Is this company an attractive acquisition target? What's the best GTM path for this product?",
+            placeholder="Example: Market attractiveness, target customer, competitive intensity, business model viability, likely risks, and what would need to be true for this to work.",
             height=120,
         )
     with col_b:
@@ -292,7 +292,7 @@ def main():
         default_context = demo_context
 
     question = st.text_area(
-        "Question to investigate",
+        "Business question",
         value=default_question,
         placeholder="Enter the business question you want the agent to research.",
         height=100,
