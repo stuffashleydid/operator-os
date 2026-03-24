@@ -9,7 +9,22 @@ from openai import OpenAI
 # Config
 # ---------------------------------
 MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1")
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+def get_api_key() -> str:
+    key = os.getenv("OPENAI_API_KEY")
+    if key:
+        return key
+
+    try:
+        with open(".env", "r") as f:
+            for line in f:
+                if line.startswith("OPENAI_API_KEY="):
+                    return line.split("=", 1)[1].strip()
+    except FileNotFoundError:
+        pass
+
+    raise ValueError("OPENAI_API_KEY not found in environment or .env file")
+
+client = OpenAI(api_key=get_api_key())
 
 SYSTEM_PROMPT = """
 You are Operator OS, a high-leverage research and decision-support agent for founders, chiefs of staff, operators, and investors.
@@ -224,24 +239,27 @@ def render_next_steps(items: List[Dict[str, str]]):
             st.write(f"**Timing:** {item.get('timing', '-')}")
 
 
-def load_demo(mode: str) -> Tuple[str, str]:
+def load_demo(mode: str):
     demos = {
         "Market entry": (
-            "Should we enter a new metropolitan market with a premium service offering?"
-            "Assess target customer demand, price tolerance, competitive intensity, go-to-market feasibility, and whether the economics support a premium position."
+            "Should we enter a new metropolitan market with a premium service offering?",
+            "Assess target customer demand, price tolerance, competitive intensity, go-to-market feasibility, and whether the economics support a premium position.",
         ),
         "Investment memo": (
-            "Is a specialized professional services firm an attractive investment or acquisition target over the next 24 months?"
-            "Focus on market demand, competition, service-model defensibility, margin profile, and what would make a firm stand out in a crowded market."
+            "Is a specialized professional services firm an attractive investment or acquisition target over the next 24 months?",
+            "Focus on market demand, competition, service-model defensibility, margin profile, and what would make a firm stand out in a crowded market.",
         ),
         "GTM research": (
-            "Should a new premium consumer brand launch first through niche partnership channels?"
-            "Assess customer fit, channel attractiveness, pricing power, partnership feasibility, and likely go-to-market risks."
+            "Should a new premium brand launch first through niche partnership channels?",
+            "Assess customer fit, channel attractiveness, pricing power, partnership feasibility, and likely go-to-market risks.",
         ),
         "Custom": ("", ""),
     }
-    return demos.get(mode, ("", ""))
 
+    if mode in demos:
+        return demos[mode]
+
+    return ("", "")
 
 def main():
     st.set_page_config(page_title="Operator OS", layout="wide")
@@ -265,7 +283,13 @@ def main():
             """
         )
 
-    demo_question, demo_context = load_demo(mode)
+    demo_data = load_demo(mode)
+
+if not isinstance(demo_data, tuple) or len(demo_data) != 2:
+    st.error(f"load_demo returned invalid value: {demo_data}")
+    st.stop()
+
+demo_question, demo_context = demo_data
 
     col_a, col_b = st.columns([2, 1])
     with col_a:
