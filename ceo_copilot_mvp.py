@@ -292,15 +292,15 @@ if not isinstance(demo_data, tuple) or len(demo_data) != 2:
 demo_question, demo_context = demo_data
 
 col_a, col_b = st.columns([2, 1])
-    with col_a:
-        question = st.text_area(
+with col_a:
+    question = st.text_area(
             "Key considerations",
             value=demo_question,
             placeholder="Example: Market attractiveness, target customer, competitive intensity, business model viability, likely risks, and what would need to be true for this to work.",
             height=120,
         )
-    with col_b:
-        if st.button("Load demo scenario"):
+with col_b:
+    if st.button("Load demo scenario"):
             st.session_state["question"] = demo_question
             st.session_state["context"] = demo_context
             st.rerun()
